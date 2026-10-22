@@ -1,6 +1,6 @@
 import plotly.graph_objects as go
 import pandas as pd
-from zoneinfo import ZoneInfo
+#from zoneinfo import ZoneInfo
 # visualisations.py
 """
 from functions import (
@@ -132,7 +132,7 @@ def per_part(data, color="#2ca02c"):
     return fig
 
 def time_pie(week):
-    labels = ["Scheduled Breaks", "Bending", "Loading/Unloading", "Editing", "Downtime"]
+    labels = ["Scheduled Breaks", "Bending", "Loading/Unloading Tubes", "Editing programs", "Bender Idle"]
     values = [week["Breaks_Time"], week["Total_Bending_Time"], week["Total_Loading_Time"],
               week["Total_Editing_Time"], week["Total_Downtime"]]
     return pie_chart(labels, [round(v / 3600, 1) for v in values])

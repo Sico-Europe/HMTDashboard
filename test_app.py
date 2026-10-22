@@ -52,10 +52,11 @@ if activity.open:
             current = now()
             week_start = (current - pd.Timedelta(days=current.weekday())).normalize()
             this_week = part_breakdown.loc[part_breakdown["Week"] == week_start]
-            week = weekly.loc[week_start]
+            
             if this_week.empty:
                 st.info("No data available for this week.")
             else:
+                week = weekly.loc[week_start]
             #Availability and performance gauges
                 col1, col2= st.columns(2)
                 with col1:
