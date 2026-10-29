@@ -19,12 +19,13 @@ if activity.open:
         if result is None or result[0] is None:
             st.stop()
         today, weekly, part_breakdown, edits = result
+        print(edits)
 
         st.title("Activity Dashboard")
         with st.expander("Today's activity"):
             if len(today):
                 with st.container():
-                    #Graph showing number of programs run today, and the target of 90
+                    #Graph showing number of programs run today, and the target of XXX
                     st.subheader("Parts bent - Target: TBD",text_alignment="center")
                     programs_run = len(today)
                     st.plotly_chart(half_donut_gauge(programs_run, target=500),key="parts_today")

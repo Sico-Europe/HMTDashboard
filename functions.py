@@ -22,7 +22,7 @@ def now():
 
 @st.cache_data(ttl=300)
 def data_handling():
-    text = download_data("UserActions")
+    text = download_data("UserActions") #text, legacy = 
     if not text:
         st.error("No data returned from Dropbox download.")
         return None, None, None, None
@@ -37,6 +37,7 @@ def data_handling():
 def weekly_part_counts(df):
     df = df[df["Event"] == "Bent part"].copy()
     df["Week"] = df["Finish"].dt.to_period("W").dt.start_time
+    #Currently returns week, program, count
     return df.groupby(["Week", "Program"], as_index=False).agg(Count=("Program", "size"))
 
 def runs_today(runs): #Filter today only
@@ -67,17 +68,34 @@ def download_data(prefix):
     for n, path in matches:
         _, resp = dbx.files_download(path)
         text = resp.content.decode("utf-8", errors="replace")
+        #first and last lines that match LINE_RE
+        #If DateTime older than 2 months:
+            #summarise()
+        #else:
         parts.append(text if text.endswith("\n") else text + "\n")
     return "".join(parts)
 
-def load_log(text):
+#def summarise(file):
+    #rows = []
+    #for line in text.splitlines():
+        #m = LINE_RE.match(line)
+        #if m:
+            #rows.append(m.groupdict())
+    #df = pd.DataFrame(rows).drop(columns=["Type"])
+    #df["DateTime"] = pd.to_datetime(df["DateTime"], format="%Y-%m-%d %H:%M:%S,%f")
 
-    LINE_RE = re.compile(
+    #return program, count
+    #and week, part count, availability, performance
+    #save to Dropbox as CSV
+
+LINE_RE = re.compile(
     r"^(?P<DateTime>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})\s+"
     r"\w+\s+"                       # level (INFO etc.), not captured
     r"(?P<Type>\S+)\s*:\s*"
     r"(?P<Event>.*)$")
 
+
+def load_log(text):
     rows = []
     for line in text.splitlines():
         m = LINE_RE.match(line)
@@ -85,6 +103,7 @@ def load_log(text):
             rows.append(m.groupdict())
     df = pd.DataFrame(rows).drop(columns=["Type"])
     df["DateTime"] = pd.to_datetime(df["DateTime"], format="%Y-%m-%d %H:%M:%S,%f")
+    df["DateTime"] += pd.Timedelta(hours=5) # bender is in US time
     df = df[df["DateTime"] >= start_date]
     return df.sort_values("DateTime", kind="stable").reset_index(drop=True)
 
@@ -180,6 +199,8 @@ def loading_prediction(runs):
     return runs
 
 def split_weekly(runs):
+    #Add in stored summary data
+    #Currently returns: Week, Days Recorded, Total Runs, Total Bending Time, Total Loading Time, Total Editing Time, Shift Time, Breaks Time, Total Downtime, Availability
     runs["Week"] = runs["Finish"].dt.to_period("W").dt.start_time
     loading = loading_prediction(runs)
 
