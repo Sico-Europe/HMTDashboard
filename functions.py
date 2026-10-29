@@ -17,12 +17,14 @@ shift_start = "08:00"
 shift_end = "17:00"
 breaks = [("10:00", "10:15"), ("13:00", "13:30")]
 
+file = "/HMTbender.log"
+
 def now():
     return pd.Timestamp.now(tz=ZoneInfo("Europe/London")).tz_localize(None)
 
 @st.cache_data(ttl=300)
 def data_handling():
-    text = download_data("UserActions") #text, legacy = 
+    text = download_data(file) #text, legacy = 
     if not text:
         st.error("No data returned from Dropbox download.")
         return None, None, None, None
@@ -45,35 +47,14 @@ def runs_today(runs): #Filter today only
     today_runs = runs[(runs["Finish"].dt.normalize() == today) &(runs["Event"] == "Bent part")]
     return today_runs
 
-def download_data(prefix):
-    LOG_PATTERN = re.compile(r"^" + re.escape(prefix) + r"\.log(?:\.(\d+))?$")
+def download_data(file):
     dbx = dropbox.Dropbox(
         oauth2_refresh_token=st.secrets["DROPBOX_REFRESH_TOKEN"],
         app_key=st.secrets["DROPBOX_APP_KEY"],
         app_secret=st.secrets["DROPBOX_APP_SECRET"],)
-    res = dbx.files_list_folder("")
-    entries = list(res.entries)
-    while res.has_more:                    
-        res = dbx.files_list_folder_continue(res.cursor)
-        entries.extend(res.entries)
-    matches = []
-    for e in entries:
-        if isinstance(e, dropbox.files.FileMetadata):
-            m = LOG_PATTERN.match(e.name)
-            if m:
-                n = int(m.group(1)) if m.group(1) else 0   # 0 = current file
-                matches.append((n, e.path_lower))
-    matches.sort(key=lambda x: x[0], reverse=True)
-    parts = []
-    for n, path in matches:
-        _, resp = dbx.files_download(path)
-        text = resp.content.decode("utf-8", errors="replace")
-        #first and last lines that match LINE_RE
-        #If DateTime older than 2 months:
-            #summarise()
-        #else:
-        parts.append(text if text.endswith("\n") else text + "\n")
-    return "".join(parts)
+    metadata, response = dbx.files_download(file)
+
+    return response.content.decode("utf-8")
 
 #def summarise(file):
     #rows = []
