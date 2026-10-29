@@ -17,7 +17,7 @@ shift_start = "08:00"
 shift_end = "17:00"
 breaks = [("10:00", "10:15"), ("13:00", "13:30")]
 
-file = "/HMTbender.log"
+file = "/HMTbender.txt"
 
 def now():
     return pd.Timestamp.now(tz=ZoneInfo("Europe/London")).tz_localize(None)
