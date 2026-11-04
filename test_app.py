@@ -19,14 +19,13 @@ if activity.open:
         if result is None or result[0] is None:
             st.stop()
         today, weekly, part_breakdown, edits = result
-        print(edits)
 
         st.title("Activity Dashboard")
         with st.expander("Today's activity"):
             if len(today):
                 with st.container():
                     #Graph showing number of programs run today, and the target of XXX
-                    st.subheader("Parts bent - Target: TBD",text_alignment="center")
+                    st.subheader("Parts bent - Target: 500",text_alignment="center")
                     programs_run = len(today)
                     st.plotly_chart(half_donut_gauge(programs_run, target=500),key="parts_today")
                     #Activity per half hour
@@ -37,16 +36,16 @@ if activity.open:
                     st.plotly_chart(per_part(today), key="spread_today")
                     #Number and time of edits
                     st.subheader("Program tweaks")
-                    st.info("Time spent editing the program when parts deviate due to differences in metal batches")
+                    st.info("Time spent editing the program. Small edits are required when parts deviate due to differences in metal batches")
                     col1, col2= st.columns(2)
                     edits_today = edits.loc[edits["Finish"].dt.normalize() == now().normalize()]
                     edits_count_today = len(edits_today)
                     edits_time_today = edits_today["Total_time"].sum()
                     col1.metric("Number of edits", edits_count_today,)
-                    col2.metric("Time spent on edits (minutes)", round(edits_time_today)/60)
+                    col2.metric("Time spent on edits (minutes)", round(edits_time_today/60,2))
                     #Number and time of changeovers
-                    st.subheader("Changeovers")
-                    st.info("Tracking of time taken changing toolings between different tubes will be added in the future")
+                    #st.subheader("Changeovers")
+                    #st.info("Changeover of tooling for different size/shape tubes.")
             else:
                 st.info("No data available for today.")
         with st.expander("This week"):

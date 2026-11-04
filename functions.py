@@ -84,7 +84,9 @@ def load_log(text):
             rows.append(m.groupdict())
     df = pd.DataFrame(rows).drop(columns=["Type"])
     df["DateTime"] = pd.to_datetime(df["DateTime"], format="%Y-%m-%d %H:%M:%S,%f")
-    df["DateTime"] += pd.Timedelta(hours=5) # bender is in US time
+
+    df['DateTime'] = df['DateTime'].dt.tz_localize('US/Eastern').dt.tz_convert('Europe/London')
+
     df = df[df["DateTime"] >= start_date]
     return df.sort_values("DateTime", kind="stable").reset_index(drop=True)
 
