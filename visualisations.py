@@ -25,24 +25,40 @@ def half_donut_gauge(value, target, color="#2ca02c"):
     return fig
 
 def half_hour(data):
-    # Make sure Finish is datetime
     data = data.copy()
+
+    # Ensure Finish is London timezone-aware
     data["Finish"] = pd.to_datetime(data["Finish"])
 
+    if data["Finish"].dt.tz is None:
+        data["Finish"] = data["Finish"].dt.tz_localize("Europe/London")
+    else:
+        data["Finish"] = data["Finish"].dt.tz_convert("Europe/London")
+
     current = now()
-    shift_end_dt = pd.Timestamp("17:00")
+
+    # Today's shift end
+    shift_end_dt = pd.Timestamp(
+        f"{current:%Y-%m-%d} 17:00",
+        tz="Europe/London"
+    )
+
     latest_finish = data["Finish"].max()
+
+    # Determine chart end
     if current < shift_end_dt:
         end = current
     else:
         end = max(shift_end_dt, latest_finish)
+
     end = end.ceil("30min")
 
     # Create complete range of half-hour intervals
     finish_range = pd.date_range(
         start=data["Finish"].min().floor("30min"),
         end=end,
-        freq="30min")
+        freq="30min"
+    )
 
     # Count completed runs in each half-hour
     finish_counts = (
@@ -53,11 +69,22 @@ def half_hour(data):
         .reindex(finish_range, fill_value=0)
         .rename("Runs")
         .reset_index()
-        .rename(columns={"index": "FinishHalfHour"}))
+        .rename(columns={"index": "FinishHalfHour"})
+    )
 
     # Create labels
-    finish_counts["FinishLabel"] = (finish_counts["FinishHalfHour"].dt.strftime("%H:%M"))
-    fig = bar(finish_counts["FinishHalfHour"],"Half hour",finish_counts["Runs"],"Programs completed",time_axis=True)
+    finish_counts["FinishLabel"] = (
+        finish_counts["FinishHalfHour"].dt.strftime("%H:%M")
+    )
+
+    fig = bar(
+        finish_counts["FinishHalfHour"],
+        "Half hour",
+        finish_counts["Runs"],
+        "Programs completed",
+        time_axis=True
+    )
+
     return fig
 
 def bar(x, x_label, y, y_label, color="#2ca02c", time_axis=False):

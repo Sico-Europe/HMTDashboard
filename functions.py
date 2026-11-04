@@ -5,10 +5,10 @@ import streamlit as st
 import dropbox
 import re
 #import datetime
-from zoneinfo import ZoneInfo
 #import math
 
 start_date = pd.Timestamp("2026-10-01") #When we started using the machine - ignore previous data, machine was second hand
+start_date = pd.Timestamp(start_date).tz_localize('Europe/London')
 
 #Workday assumptions
 work_days = 4   # Mon-Thu: weekday() 0..3
@@ -20,7 +20,7 @@ breaks = [("10:00", "10:15"), ("13:00", "13:30")]
 file = "/HMTbender.txt"
 
 def now():
-    return pd.Timestamp.now(tz=ZoneInfo("Europe/London")).tz_localize(None)
+    return pd.Timestamp.now(tz="Europe/London")
 
 @st.cache_data(ttl=300)
 def data_handling():
@@ -38,13 +38,24 @@ def data_handling():
 
 def weekly_part_counts(df):
     df = df[df["Event"] == "Bent part"].copy()
-    df["Week"] = df["Finish"].dt.to_period("W").dt.start_time
+    df["Week"] = (
+    df["Finish"]
+    .dt.tz_localize(None)
+    .dt.to_period("W")
+    .dt.start_time
+    .dt.tz_localize("Europe/London")
+)
     #Currently returns week, program, count
     return df.groupby(["Week", "Program"], as_index=False).agg(Count=("Program", "size"))
 
-def runs_today(runs): #Filter today only
-    today = pd.Timestamp.today().normalize()
-    today_runs = runs[(runs["Finish"].dt.normalize() == today) &(runs["Event"] == "Bent part")]
+def runs_today(runs):
+    today = now().normalize()
+
+    today_runs = runs[
+        (runs["Finish"].dt.normalize() == today) &
+        (runs["Event"] == "Bent part")
+    ]
+
     return today_runs
 
 def download_data(file):
@@ -145,19 +156,38 @@ def build_runs(df):
 
 def real_breaks(day, current):
     total = 0
-    for bstart, bend in breaks:  # Have the breaks happened yet?
-        b0 = pd.Timestamp(f"{day:%Y-%m-%d} {bstart}")
-        b1 = pd.Timestamp(f"{day:%Y-%m-%d} {bend}")
-        end = min(b1, current)          # for past days this is the full break
+
+    for bstart, bend in breaks:
+        b0 = pd.Timestamp(
+            f"{day:%Y-%m-%d} {bstart}",
+            tz="Europe/London"
+        )
+        b1 = pd.Timestamp(
+            f"{day:%Y-%m-%d} {bend}",
+            tz="Europe/London"
+        )
+
+        end = min(b1, current)
+
         if end > b0:
             total += (end - b0).total_seconds()
+
     return total
+
 
 def real_shift(day, current):
     if day.weekday() >= work_days:
         return 0.0
-    s = pd.Timestamp(f"{day:%Y-%m-%d} {shift_start}")
-    e = pd.Timestamp(f"{day:%Y-%m-%d} {shift_end}")
+
+    s = pd.Timestamp(
+        f"{day:%Y-%m-%d} {shift_start}",
+        tz="Europe/London"
+    )
+    e = pd.Timestamp(
+        f"{day:%Y-%m-%d} {shift_end}",
+        tz="Europe/London"
+    )
+
     return max(0.0, (min(e, current) - s).total_seconds())
 
 def loading_prediction(runs):
@@ -184,7 +214,13 @@ def loading_prediction(runs):
 def split_weekly(runs):
     #Add in stored summary data
     #Currently returns: Week, Days Recorded, Total Runs, Total Bending Time, Total Loading Time, Total Editing Time, Shift Time, Breaks Time, Total Downtime, Availability
-    runs["Week"] = runs["Finish"].dt.to_period("W").dt.start_time
+    runs["Week"] = (
+    runs["Finish"]
+    .dt.tz_localize(None)
+    .dt.to_period("W")
+    .dt.start_time
+    .dt.tz_localize("Europe/London")
+)
     loading = loading_prediction(runs)
 
     split = loading.groupby("Week").agg(
@@ -202,7 +238,7 @@ def split_weekly(runs):
     current = now()
     shifts, week_breaks = [], []
     for week in split.index:
-        days = [week + pd.Timedelta(days=d) for d in range(work_days)]
+        days = [week + pd.DateOffset(days=d) for d in range(work_days)]
         days = [d for d in days if d >= start_date]
         shifts.append(sum(real_shift(d, current) for d in days))
         week_breaks.append(sum(real_breaks(d, current) for d in days))
