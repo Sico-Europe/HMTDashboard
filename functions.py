@@ -13,7 +13,7 @@ start_date = pd.Timestamp(start_date).tz_localize('Europe/London')
 #Workday assumptions
 work_days = 4   # Mon-Thu: weekday() 0..3
 workday_offset = pd.offsets.CustomBusinessDay(weekmask="Mon Tue Wed Thu")
-shift_start = "08:00"
+shift_start = "07:00"
 shift_end = "17:00"
 breaks = [("10:00", "10:15"), ("13:00", "13:30")]
 
@@ -34,7 +34,8 @@ def data_handling():
     part_breakdown = weekly_part_counts(runs)
     weekly = split_weekly(runs)
     edits = runs[runs["Event"] == "Edited part"]
-    return today, weekly, part_breakdown, edits
+    latest = df["DateTime"].max()
+    return today, weekly, part_breakdown, edits, latest
 
 def weekly_part_counts(df):
     df = df[df["Event"] == "Bent part"].copy()
@@ -224,7 +225,7 @@ def split_weekly(runs):
     loading = loading_prediction(runs)
 
     split = loading.groupby("Week").agg(
-        Days_Recorded=("Finish", lambda x: x.dt.normalize().nunique()),   # was "nunique" (counts timestamps)
+        Days_Recorded=("Finish", lambda x: x.dt.normalize().nunique()),
         Total_Runs=("Program", "count"),
         Total_Bending_Time=("Cycle_Time", "sum"),
         Total_Loading_Time=("Loading", "sum"),
